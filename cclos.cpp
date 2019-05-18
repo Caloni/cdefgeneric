@@ -13,7 +13,6 @@ extern "C"
 	{
 		void* fun;
 		Argv argv;
-		void* next;
 	};
 
 	typedef void (*FP_Argv0)();
@@ -27,6 +26,7 @@ extern "C"
 
 	static ClassMap g_classes;
 	static MethodMap g_methods;
+	static Methods g_calledMethods;
 
 
 	const char* defclass(const char* name, const char* deriv)
@@ -52,58 +52,17 @@ extern "C"
 		return true;
 	}
 
-	int calcdistance_arg(cclass_instance* arg, cclass_instance* underpromo)
-	{
-		int ret = 0;
-		std::string a1 = arg->type;
-		std::string a2 = underpromo->type;
-		while ( a1 != a2 )
-		{
-			a1 = g_classes[a1];
-			if (a1.empty()) return -1;
-			++ret;
-		}
-		return ret;
-	}
-
-	int calcdistance(Argv& args, Argv& underpromo)
-	{
-		if (args.size() != underpromo.size()) return -1;
-		int ret = 0;
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			int dist = calcdistance_arg(args[i], underpromo[i]);
-			if (dist == -1) return -1;
-			ret += dist;
-		}
-		return ret;
-	}
-
 	void defmethod(const char* name, void* fun, int argc, ...)
 	{
 		Method method = { fun };
 		extractargv(method.argv, argc);
-		method.next = NULL;
-
-		int nextdist = 0;
-		for (Method& m : g_methods[name])
-		{
-			int dist = calcdistance(method.argv, m.argv);
-			if (dist >= 0)
-			{
-				if( nextdist == 0 || dist < nextdist )
-				{
-					method.next = m.fun;
-					nextdist = dist;
-				}
-			}
-		}
-
 		g_methods[name].push_back(method);
 	}
 
 	void callmethod(const char* name, Method& method)
 	{
+		g_calledMethods.push_back(method);
+
 		if (method.argv.size() == 0)
 		{
 			FP_Argv0 fun = (FP_Argv0)method.fun;
@@ -140,45 +99,94 @@ extern "C"
 		return method;
 	}
 
-	void call_next_method(const char* name, void* fun, int argc, ...)
+	int calcdistance_arg(cclass_instance* arg, cclass_instance* underpromo)
 	{
-		Method* method = find_method(name, fun);
-		if (method && method->next)
+		int ret = 0;
+		std::string a1 = arg->type;
+		std::string a2 = underpromo->type;
+		while ( a1 != a2 )
 		{
-			extractargv(method->argv, argc);
-			callmethod(name, *method);
+			a1 = g_classes[a1];
+			if (a1.empty()) return -1;
+			++ret;
 		}
+		return ret;
 	}
 
-	void call(const char* name, int argc, ...)
+	int calcdistance(Argv& args, Argv& underpromo)
 	{
-		Methods& methods = g_methods[name];
-		Argv argv;
-		extractargv(argv, argc);
-		for (Method& m : methods)
+		if (args.size() != underpromo.size()) return -1;
+		int ret = 0;
+		for (size_t i = 0; i < args.size(); ++i)
 		{
-			Method* meth = &m;
+			int dist = calcdistance_arg(args[i], underpromo[i]);
+			if (dist == -1) return -1;
+			ret += dist;
+		}
+		return ret;
+	}
 
-			if (meth->fun && argmatch(argv, meth->argv))
+	void call_next_method(const char* name, int argc, ...)
+	{
+		Method method;
+		extractargv(method.argv, argc);
+
+		int nextdist = 666;
+		Methods& methods = g_methods[name];
+		for (Method& m : g_methods[name])
+		{
+			bool alreadyCalled = false;
+			for (Method& calledMethod : g_calledMethods)
 			{
-				callmethod(name, *meth);
-				goto end;
-			}
-			else
-			{
-				while (meth)
+				if (calledMethod.fun == m.fun)
 				{
-					meth = find_method(name, meth->next);
+					alreadyCalled = true;
+					break;
+				}
+			}
 
-					if (meth && meth->fun)
+			if (!alreadyCalled)
+			{
+				int dist = calcdistance(method.argv, m.argv);
+				if (dist >= 0 && dist < nextdist)
+				{
+					if (dist < nextdist)
 					{
-						callmethod(name, *meth);
-						goto end;
+						method.fun = m.fun;
+						nextdist = dist;
 					}
 				}
 			}
 		}
-	end:;
+
+		if( method.fun )
+			callmethod(name, method);
+	}
+
+	void call(const char* name, int argc, ...)
+	{
+		g_calledMethods.clear();
+
+		Method method;
+		extractargv(method.argv, argc);
+
+		int nextdist = 666;
+		Methods& methods = g_methods[name];
+		for (Method& m : g_methods[name])
+		{
+			int dist = calcdistance(method.argv, m.argv);
+			if (dist >= 0 && dist < nextdist)
+			{
+				if( dist < nextdist )
+				{
+					method.fun = m.fun;
+					nextdist = dist;
+				}
+			}
+		}
+
+		if( method.fun )
+			callmethod(name, method);
 	}
 }
 

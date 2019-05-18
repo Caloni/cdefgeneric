@@ -24,13 +24,13 @@ void thing_foo_foo(cclass_instance* x, cclass_instance* y)
 void thing_bar_foo(cclass_instance* x, cclass_instance* y)
 {
 	printf("X is BAR, Y is FOO. Next...\n");
-	call_next_method("thing", &thing_bar_foo, 2, x, y);
+	call_next_method("thing", 2, x, y);
 }
 
 void thing_foo_bar(cclass_instance* x, cclass_instance* y)
 {
 	printf("X is FOO, Y is BAR. Next...\n");
-	call_next_method("thing", &thing_foo_bar, 2, x, y);
+	call_next_method("thing", 2, x, y);
 }
 
 int main()

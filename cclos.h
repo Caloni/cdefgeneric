@@ -6,7 +6,7 @@ static cclass_instance cclass = { "cclass" };
 
 const char* defclass(const char* name, const char* deriv);
 void defmethod(const char* name, void* fun, int argc, ...);
-void call_next_method(const char* name, void* fun, int argc, ...);
+void call_next_method(const char* name, int argc, ...);
 void call(const char* name, int argc, ...);
 
 
