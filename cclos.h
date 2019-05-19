@@ -4,6 +4,7 @@
 typedef struct cclass_instance { const char* type; } cclass_instance;
 static cclass_instance cclass = { "cclass" };
 
+void cdefgeneric_initialize();
 const char* defclass(const char* name, const char* deriv);
 void defmethod(const char* name, void* fun, int argc, ...);
 void call_next_method(const char* name, int argc, ...);

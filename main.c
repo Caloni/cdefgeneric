@@ -35,6 +35,7 @@ void thing_foo_bar(cclass_instance* x, cclass_instance* y)
 
 int main()
 {
+	cdefgeneric_initialize();
 	defclass("foo", "cclass");
 	defclass("bar", "foo");
 	defmethod("thing", &thing_foo_foo, 2, &foo, &foo);
